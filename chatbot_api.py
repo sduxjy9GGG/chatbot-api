@@ -1,26 +1,36 @@
 from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
+
+DEEPSEEK_API_KEY = "sk-b5efeb796de44211a4ae1d8603ab2cdd"  
 
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json.get('message')
-    print("User:", user_message)
 
-    # 💬 Simulated responses based on keywords
-    if "stock" in user_message.lower():
-        reply = "🤖 Stocks represent ownership in a company."
-    elif "mutual fund" in user_message.lower():
-        reply = "🤖 A mutual fund pools money from investors to buy assets."
-    elif "bitcoin" in user_message.lower():
-        reply = "🤖 Bitcoin is a decentralized digital currency."
+    # Call DeepSeek API
+    response = requests.post(
+        "https://api.deepseek.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "deepseek-chat",  # Or use "deepseek-coder" if you want code-based replies
+            "messages": [
+                {"role": "system", "content": "You are a helpful stock market assistant."},
+                {"role": "user", "content": user_message}
+            ]
+        }
+    )
+
+    if response.status_code == 200:
+        data = response.json()
+        reply = data["choices"][0]["message"]["content"]
+        return jsonify({"reply": reply})
     else:
-        reply = f"🤖 You asked: '{user_message}'. I'm a simulated AI for now."
-
-    print("Bot:", reply)
-    return jsonify({"reply": reply})
-
+        return jsonify({"reply": f"❌ DeepSeek error: {response.status_code}"}), 500
 
 if __name__ == '__main__':
-    # 🔧 Required to make it reachable by your phone
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
